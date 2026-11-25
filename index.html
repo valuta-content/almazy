@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Мои алмазы — проверка</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{--bg:#f4f6fa;--card:#fff;--fg:#17202e;--muted:#667085;--ok:#15803d;--bad:#b42318}
+  @media (prefers-color-scheme: dark){:root{--bg:#0f141c;--card:#18202b;--fg:#e8edf5;--muted:#93a0b4;--ok:#4ade80;--bad:#f97066}}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
+       padding:24px max(16px,env(safe-area-inset-left)) 40px}
+  .card{max-width:420px;margin:0 auto;background:var(--card);border-radius:18px;padding:24px;text-align:center}
+  .gem{font-size:56px}
+  h1{font-size:24px;margin:8px 0}
+  .ok{color:var(--ok);font-weight:700}
+  .bad{color:var(--bad);font-weight:700}
+  .muted{color:var(--muted);font-size:14px}
+  code{font-size:15px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="gem">💎</div>
+  <h1 id="hello">Проверка…</h1>
+  <p id="status"></p>
+  <p class="muted" id="details"></p>
+</div>
+<script>
+  var tg = window.Telegram && window.Telegram.WebApp;
+  var u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+  var hello = document.getElementById('hello'), st = document.getElementById('status'), det = document.getElementById('details');
+  if (tg) { try { tg.ready(); tg.expand(); } catch(e){} }
+  if (u && u.id) {
+    hello.textContent = 'Привет, ' + (u.first_name || '') + '!';
+    st.innerHTML = '<span class="ok">✅ Всё работает: Telegram сам передал, кто открыл приложение.</span>';
+    det.innerHTML = 'Твой ID: <code>' + u.id + '</code>' + (u.username ? '<br>Ник: @' + u.username : '') +
+      '<br>Telegram: ' + (tg.platform || '?') + ', версия ' + (tg.version || '?');
+  } else {
+    hello.textContent = 'Привет!';
+    st.innerHTML = '<span class="bad">❌ Telegram не передал данные.</span>';
+    det.textContent = 'Скорее всего, страница открыта не как приложение Telegram, а в обычном браузере. Сделай скриншот и пришли его.';
+  }
+</script>
+</body>
+</html>
