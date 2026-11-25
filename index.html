@@ -3,44 +3,112 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Мои алмазы — проверка</title>
+<title>Мои алмазы</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="config.js?v=1"></script>
 <style>
-  :root{--bg:#f4f6fa;--card:#fff;--fg:#17202e;--muted:#667085;--ok:#15803d;--bad:#b42318}
-  @media (prefers-color-scheme: dark){:root{--bg:#0f141c;--card:#18202b;--fg:#e8edf5;--muted:#93a0b4;--ok:#4ade80;--bad:#f97066}}
-  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
-       padding:24px max(16px,env(safe-area-inset-left)) 40px}
-  .card{max-width:420px;margin:0 auto;background:var(--card);border-radius:18px;padding:24px;text-align:center}
-  .gem{font-size:56px}
-  h1{font-size:24px;margin:8px 0}
-  .ok{color:var(--ok);font-weight:700}
-  .bad{color:var(--bad);font-weight:700}
-  .muted{color:var(--muted);font-size:14px}
-  code{font-size:15px}
+:root{
+  --bg:#eef1f6; --card:#ffffff; --fg:#17202e; --muted:#667085; --line:#e2e6ee;
+  --gem:#14b8c9; --plus:#15803d; --minus:#b42318; --soft:#e8f1ff;
+}
+:root[data-theme="dark"]{
+  --bg:#0f141c; --card:#18202b; --fg:#e8edf5; --muted:#93a0b4; --line:#273242;
+  --gem:#3fd3e2; --plus:#4ade80; --minus:#f97066; --soft:#1c2a40; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:16px max(16px,env(safe-area-inset-left)) calc(32px + env(safe-area-inset-bottom))}
+.wrap{max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--card);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.hero{align-items:center;text-align:center;padding:24px 16px}
+.who{color:var(--muted);font-size:14px}
+.num{font-size:52px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.num span{color:var(--gem)}
+h2{margin:0;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:baseline;padding-block:8px;border-top:1px solid var(--line)}
+.week+.row{border-top:0}
+.row .t{min-width:0}
+.v{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.v.p{color:var(--plus)} .v.m{color:var(--minus)}
+.week{font-size:12px;font-weight:600;color:var(--muted);padding-top:6px}
+.reward{display:flex;flex-direction:column;gap:6px;padding-block:8px;border-top:1px solid var(--line)}
+.reward:first-child{border-top:0}
+.top{display:flex;justify-content:space-between;gap:12px}
+.name{font-weight:600}
+.price{font-weight:700;white-space:nowrap}
+.desc{font-size:13px;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--gem)}
+.state{font-size:12px;font-weight:600}
+.ok{color:var(--plus)} .wait{color:var(--muted)}
+ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.how{background:var(--soft);border-radius:12px;padding:12px;font-size:14px}
+.msg{text-align:center;padding:32px 16px;align-items:center}
+.msg .gem{font-size:48px}
+.empty{color:var(--muted);font-size:14px}
 </style>
 </head>
 <body>
-<div class="card">
-  <div class="gem">💎</div>
-  <h1 id="hello">Проверка…</h1>
-  <p id="status"></p>
-  <p class="muted" id="details"></p>
+<div class="wrap" id="root">
+  <div class="card msg"><div class="gem">💎</div><div>Загружаю твои алмазы…</div></div>
 </div>
 <script>
+(function(){
   var tg = window.Telegram && window.Telegram.WebApp;
-  var u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
-  var hello = document.getElementById('hello'), st = document.getElementById('status'), det = document.getElementById('details');
+  var root = document.getElementById('root');
   if (tg) { try { tg.ready(); tg.expand(); } catch(e){} }
-  if (u && u.id) {
-    hello.textContent = 'Привет, ' + (u.first_name || '') + '!';
-    st.innerHTML = '<span class="ok">✅ Всё работает: Telegram сам передал, кто открыл приложение.</span>';
-    det.innerHTML = 'Твой ID: <code>' + u.id + '</code>' + (u.username ? '<br>Ник: @' + u.username : '') +
-      '<br>Telegram: ' + (tg.platform || '?') + ', версия ' + (tg.version || '?');
-  } else {
-    hello.textContent = 'Привет!';
-    st.innerHTML = '<span class="bad">❌ Telegram не передал данные.</span>';
-    det.textContent = 'Скорее всего, страница открыта не как приложение Telegram, а в обычном браузере. Сделай скриншот и пришли его.';
+  var dark = tg && tg.colorScheme ? tg.colorScheme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function msg(text){ root.innerHTML = '<div class="card msg"><div class="gem">💎</div><div>' + text + '</div></div>'; }
+
+  if (!tg || !tg.initData) { msg('Открой «Мои алмазы» через кнопку в боте клуба в Telegram.'); return; }
+  if (!window.ALMAZY_API) { msg('Приложение ещё настраивается. Загляни чуть позже.'); return; }
+
+  fetch(window.ALMAZY_API + '?initData=' + encodeURIComponent(tg.initData))
+    .then(function(r){ return r.json(); })
+    .then(render)
+    .catch(function(){ msg('Не получилось загрузить данные. Закрой приложение и открой ещё раз.'); });
+
+  function render(d){
+    if (!d.ok) {
+      var why = { no_token:'не введён токен бота', bad_auth:'Telegram не подтвердил вход', server:'ошибка в таблице' }[d.error] || d.error;
+      msg('Не получилось загрузить данные (' + esc(why) + '). Закрой приложение и открой ещё раз.'); return;
+    }
+    if (d.soon) { msg((d.first_name ? esc(d.first_name) + ', с' : 'С') + 'коро здесь появятся твои алмазы 💎'); return; }
+
+    var h = '';
+    h += '<div class="card hero"><div class="who">' + esc(d.first_name || d.name) + ', твой баланс</div>' +
+         '<div class="num">' + d.balance + ' <span>💎</span></div></div>';
+
+    if (d.rewards.length) {
+      h += '<div class="card"><h2>Награды</h2><div>';
+      d.rewards.forEach(function(r){
+        var ok = d.balance >= r.price, pct = r.price > 0 ? Math.max(0, Math.min(100, Math.round(d.balance / r.price * 100))) : 100;
+        h += '<div class="reward"><div class="top"><span class="name">' + esc(r.name) + '</span><span class="price">' + r.price + ' 💎</span></div>' +
+             (r.desc ? '<div class="desc">' + esc(r.desc) + '</div>' : '') +
+             '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
+             '<div class="state ' + (ok ? 'ok' : 'wait') + '">' + (ok ? 'Можно обменять' : 'Осталось ' + (r.price - d.balance) + ' 💎') + '</div></div>';
+      });
+      h += '</div>' + (d.howto ? '<div class="how">' + esc(d.howto) + '</div>' : '') + '</div>';
+    }
+
+    h += '<div class="card"><h2>За что начислено</h2>';
+    if (!d.history.length) h += '<div class="empty">Пока начислений нет. Алмазы появятся в понедельник после первых заданий.</div>';
+    var last = null;
+    d.history.forEach(function(x){
+      if (x.date !== last) { h += '<div class="week">' + esc(x.date) + '</div>'; last = x.date; }
+      h += '<div class="row"><span class="t">' + esc(x.title) + '</span><span class="v ' + (x.amount < 0 ? 'm' : 'p') + '">' +
+           (x.amount > 0 ? '+' : x.amount < 0 ? '−' : '') + Math.abs(x.amount) + '</span></div>';
+    });
+    h += '</div>';
+
+    if (d.rules.length) {
+      h += '<div class="card"><h2>Коротко о правилах</h2><ul>' + d.rules.map(function(r){ return '<li>' + esc(r) + '</li>'; }).join('') + '</ul></div>';
+    }
+    root.innerHTML = h;
   }
+})();
 </script>
 </body>
 </html>
