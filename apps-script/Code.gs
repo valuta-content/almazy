@@ -97,11 +97,11 @@ function setup() {
   ]);
 
   // Лишний пустой «Лист1» убираем
-  const def = ss.getSheetByName('Лист1') || ss.getSheetByName('Sheet1');
+  const def = ss.getSheetByName('Лист1') || ss.getSheetByName('Sheet1') || ss.getSheetByName('Arkusz1');
   if (def && ss.getSheets().length > 1 && def.getLastRow() === 0) ss.deleteSheet(def);
 
   ss.setActiveSheet(ss.getSheetByName(SH.log));
-  SpreadsheetApp.getUi().alert('Листы созданы. Следующий шаг: меню «💎 Алмазы» → «2. Ввести токен бота».');
+  try { SpreadsheetApp.getUi().alert('Листы созданы. Следующий шаг: меню «💎 Алмазы» → «2. Ввести токен бота».'); } catch (e) {}
 }
 
 // Создаёт лист с шапкой и стартовыми строками, если такого листа ещё нет. Существующий не трогает.
