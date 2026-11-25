@@ -39,6 +39,14 @@ function setToken() {
 function setup() {
   const ss = SpreadsheetApp.getActive();
   ss.setSpreadsheetTimeZone('Europe/Warsaw');
+  // Формулы пишутся с запятыми; на время настройки ставим английскую локаль, потом возвращаем.
+  const locale = ss.getSpreadsheetLocale();
+  ss.setSpreadsheetLocale('en_US');
+  try { setupSheets_(ss); } finally { ss.setSpreadsheetLocale(locale); }
+  try { SpreadsheetApp.getUi().alert('Листы созданы. Следующий шаг: меню «💎 Алмазы» → «2. Ввести токен бота».'); } catch (e) {}
+}
+
+function setupSheets_(ss) {
 
   // Задания: что вписывается в «За что» и сколько алмазов это даёт
   const tasks = sheet_(ss, SH.tasks, ['За что', 'Алмазы'], [
@@ -101,7 +109,7 @@ function setup() {
   if (def && ss.getSheets().length > 1 && def.getLastRow() === 0) ss.deleteSheet(def);
 
   ss.setActiveSheet(ss.getSheetByName(SH.log));
-  try { SpreadsheetApp.getUi().alert('Листы созданы. Следующий шаг: меню «💎 Алмазы» → «2. Ввести токен бота».'); } catch (e) {}
+  SpreadsheetApp.flush();
 }
 
 // Создаёт лист с шапкой и стартовыми строками, если такого листа ещё нет. Существующий не трогает.
