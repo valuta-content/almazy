@@ -119,16 +119,15 @@ ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-si
   }
   var WHY = { balance:'Не хватает алмазов', no_slots:'Места на этот месяц закончились', already:'Эту награду ты уже брала в этом месяце' };
   function redeem(r){
-    confirmBox('Обменять ' + r.price + ' 💎 на «' + r.name + '»? Отменить можно в течение 24 часов.', function(ok){
+    confirmBox('Обменять ' + r.price + ' 💎 на «' + r.name + '»?\n\nСразу откроется чат с Олей с готовым сообщением. Обязательно нажми «Отправить», иначе Оля не узнает о заявке. Отменить можно в течение 24 часов.', function(ok){
       if (!ok) return;
       act('&action=redeem&reward=' + encodeURIComponent(r.name), function(d){
         var x = d.result || {};
         if (!x.ok) { toast(WHY[x.reason] || 'Не получилось. Попробуй ещё раз.'); return; }
         haptic();
         if (x.link) {
-          var go = function(){ openLink(x.link); };
-          if (tg.showPopup) { try { tg.showPopup({ title:'Готово! −' + x.price + ' 💎', message:'Обязательно отправь Оле сообщение об обмене, без него она не узнает о твоей заявке. Сейчас откроется чат с готовым текстом, просто нажми «Отправить».', buttons:[{id:'go', type:'default', text:'Написать Оле'}] }, go); return; } catch(e){} }
-          go();
+          toast('Готово! −' + x.price + ' 💎. Отправь Оле сообщение');
+          openLink(x.link);
         } else {
           toast('Готово! −' + x.price + ' 💎. Напиши Оле, что обменяла алмазы.');
         }
