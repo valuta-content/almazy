@@ -108,7 +108,7 @@ ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-si
       }).catch(function(){ busy = false; toast('Не получилось. Попробуй ещё раз.'); });
     });
   }
-  var PER = { once:'', week:' на этой неделе', month:' в этом месяце' };
+  var PER = { once:'', week:' на этой неделе', month:' в этом месяце', none:'' };
 
   function render(d){
     if (!d.ok) {
@@ -124,7 +124,7 @@ ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-si
     if (d.tasks && d.tasks.length) {
       h += '<div class="card"><h2>Отметить выполненное</h2><div id="tasks">';
       d.tasks.forEach(function(t, i){
-        var note = t.available
+        var note = t.period === 'none' ? 'за каждый' : t.available
           ? (t.limit > 1 ? 'можно ещё ' + (t.limit - t.used) + PER[t.period] : (t.period === 'once' ? 'засчитывается один раз' : 'один раз' + PER[t.period]))
           : (t.period === 'once' ? '✓ уже засчитано' : '✓ засчитано' + PER[t.period]);
         h += '<button class="task" data-i="' + i + '"' + (t.available ? '' : ' disabled') + '>' +
