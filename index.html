@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Мои алмазы</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="config.js?v=2"></script>
+<script src="config.js?v=3"></script>
 <style>
 :root{
   --bg:#eef1f6; --card:#ffffff; --fg:#17202e; --muted:#667085; --line:#e2e6ee;
@@ -45,6 +45,17 @@ ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-si
 .msg{text-align:center;padding:32px 16px;align-items:center}
 .msg .gem{font-size:48px}
 .empty{color:var(--muted);font-size:14px}
+.task{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:left;
+  font:inherit;color:var(--fg);background:var(--soft);border:0;border-radius:12px;padding:12px 14px;cursor:pointer}
+.task+.task{margin-top:8px}
+.task .tn{min-width:0;font-weight:600}
+.task .tn small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.task .ta{font-weight:700;color:var(--plus);white-space:nowrap}
+.task[disabled]{background:transparent;border:1px solid var(--line);cursor:default}
+.task[disabled] .tn{color:var(--muted)}
+.task[disabled] .ta{color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom));
+  background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;max-width:90%;text-align:center}
 </style>
 </head>
 <body>
@@ -65,10 +76,39 @@ ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-si
   if (!tg || !tg.initData) { msg('Открой «Мои алмазы» через кнопку в боте клуба в Telegram.'); return; }
   if (!window.ALMAZY_API) { msg('Приложение ещё настраивается. Загляни чуть позже.'); return; }
 
-  fetch(window.ALMAZY_API + '?initData=' + encodeURIComponent(tg.initData))
-    .then(function(r){ return r.json(); })
-    .then(render)
-    .catch(function(){ msg('Не получилось загрузить данные. Закрой приложение и открой ещё раз.'); });
+  var busy = false;
+  function load(extra){
+    return fetch(window.ALMAZY_API + '?initData=' + encodeURIComponent(tg.initData) + (extra || ''))
+      .then(function(r){ return r.json(); });
+  }
+  load().then(render).catch(function(){ msg('Не получилось загрузить данные. Закрой приложение и открой ещё раз.'); });
+
+  function toast(text){
+    var t = document.createElement('div'); t.className = 'toast'; t.textContent = text;
+    document.body.appendChild(t); setTimeout(function(){ t.remove(); }, 2600);
+  }
+  function confirmBox(text, cb){
+    if (tg.showConfirm) { try { tg.showConfirm(text, cb); return; } catch(e){} }
+    cb(true);
+  }
+  function mark(name, amount){
+    if (busy) return;
+    confirmBox('Отметить «' + name + '» как выполненное? +' + amount + ' 💎', function(ok){
+      if (!ok) return;
+      busy = true;
+      load('&action=mark&task=' + encodeURIComponent(name)).then(function(d){
+        busy = false;
+        render(d);
+        if (d.marked && d.marked.ok) {
+          toast('Принято! +' + d.marked.amount + ' 💎');
+          try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
+        } else {
+          toast('Это задание уже отмечено');
+        }
+      }).catch(function(){ busy = false; toast('Не получилось. Попробуй ещё раз.'); });
+    });
+  }
+  var PER = { once:'', week:' на этой неделе', month:' в этом месяце' };
 
   function render(d){
     if (!d.ok) {
@@ -80,6 +120,19 @@ ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-si
     var h = '';
     h += '<div class="card hero"><div class="who">' + esc(d.first_name || d.name) + ', твой баланс</div>' +
          '<div class="num">' + d.balance + ' <span>💎</span></div></div>';
+
+    if (d.tasks && d.tasks.length) {
+      h += '<div class="card"><h2>Отметить выполненное</h2><div id="tasks">';
+      d.tasks.forEach(function(t, i){
+        var note = t.available
+          ? (t.limit > 1 ? 'можно ещё ' + (t.limit - t.used) + PER[t.period] : (t.period === 'once' ? 'засчитывается один раз' : 'один раз' + PER[t.period]))
+          : (t.period === 'once' ? '✓ уже засчитано' : '✓ засчитано' + PER[t.period]);
+        h += '<button class="task" data-i="' + i + '"' + (t.available ? '' : ' disabled') + '>' +
+             '<span class="tn">' + esc(t.name) + '<small>' + note + '</small></span>' +
+             '<span class="ta">+' + t.amount + '</span></button>';
+      });
+      h += '</div></div>';
+    }
 
     if (d.rewards.length) {
       h += '<div class="card"><h2>Награды</h2><div>';
@@ -107,6 +160,11 @@ ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-si
       h += '<div class="card"><h2>Коротко о правилах</h2><ul>' + d.rules.map(function(r){ return '<li>' + esc(r) + '</li>'; }).join('') + '</ul></div>';
     }
     root.innerHTML = h;
+    var box = document.getElementById('tasks');
+    if (box) box.addEventListener('click', function(e){
+      var b = e.target.closest('.task'); if (!b || b.disabled) return;
+      var t = d.tasks[Number(b.getAttribute('data-i'))]; mark(t.name, t.amount);
+    });
   }
 })();
 </script>
