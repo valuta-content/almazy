@@ -147,7 +147,7 @@ ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-si
     }
 
     h += '<div class="card"><h2>За что начислено</h2>';
-    if (!d.history.length) h += '<div class="empty">Пока начислений нет. Алмазы появятся в понедельник после первых заданий.</div>';
+    if (!d.history.length) h += '<div class="empty">Пока начислений нет. Сдай задание в чат клуба с хэштегом (например #дз_урок1), и алмазы появятся здесь.</div>';
     var last = null;
     d.history.forEach(function(x){
       if (x.date !== last) { h += '<div class="week">' + esc(x.date) + '</div>'; last = x.date; }

@@ -13,22 +13,24 @@ const SH = {
   settings: 'Настройки',
 };
 
-// Задания. Колонки: За что | Алмазы | Отмечает участница | Как часто | Сколько раз
-// «Как часто»: ОДИН РАЗ (за всё время), В НЕДЕЛЮ (пн–вс), В МЕСЯЦ, БЕЗ ЛИМИТА. «Сколько раз» — сколько отметок за этот период.
-const TASK_HEADER = ['За что', 'Алмазы', 'Отмечает участница (ДА/НЕТ)', 'Как часто (ОДИН РАЗ / В НЕДЕЛЮ / В МЕСЯЦ / БЕЗ ЛИМИТА)', 'Сколько раз за период'];
+// Задания. Колонки: За что | Алмазы | Кнопка в приложении | Как часто | Сколько раз | Хэштеги в чате
+// «Как часто»: ОДИН РАЗ (за всё время), В НЕДЕЛЮ (пн–вс), В МЕСЯЦ, БЕЗ ЛИМИТА. «Сколько раз» — сколько начислений за этот период.
+// «Хэштеги в чате»: через запятую; сообщение с таким хэштегом в чате клуба начисляет алмазы автоматически.
+// Хэштеги ДЗ (#дз_урок1, #дз_урок2, …) распознаются сами: строка «ДЗ к уроку N» появляется автоматически.
+const TASK_HEADER = ['За что', 'Алмазы', 'Кнопка в приложении (ДА/НЕТ)', 'Как часто (ОДИН РАЗ / В НЕДЕЛЮ / В МЕСЯЦ / БЕЗ ЛИМИТА)', 'Сколько раз за период', 'Хэштеги в чате (через запятую)'];
 const TASK_ROWS = [
-  ['ДЗ к уроку 1', 20, 'ДА', 'ОДИН РАЗ', 1],
-  ['ДЗ к уроку 2', 20, 'ДА', 'ОДИН РАЗ', 1],
-  ['ДЗ к уроку 3', 20, 'ДА', 'ОДИН РАЗ', 1],
-  ['ДЗ к уроку 4', 20, 'ДА', 'ОДИН РАЗ', 1],
-  ['Фокус недели', 15, 'ДА', 'В НЕДЕЛЮ', 1],
-  ['Итоги недели', 5, 'ДА', 'В НЕДЕЛЮ', 1],
-  ['Участие в эфире', 10, 'ДА', 'В НЕДЕЛЮ', 1],
-  ['Reels по технике', 5, 'ДА', 'БЕЗ ЛИМИТА', ''],
-  ['Итоговая практика месяца', 15, 'ДА', 'В МЕСЯЦ', 1],
-  ['Обмен: персональный разбор', -100, 'НЕТ', '', ''],
-  ['Обмен: персональная помощь Оли', -160, 'НЕТ', '', ''],
-  ['Другое (сумма вручную)', 0, 'НЕТ', '', ''],
+  ['ДЗ к уроку 1', 20, 'НЕТ', 'ОДИН РАЗ', 1, '#дз_урок1'],
+  ['ДЗ к уроку 2', 20, 'НЕТ', 'ОДИН РАЗ', 1, '#дз_урок2'],
+  ['ДЗ к уроку 3', 20, 'НЕТ', 'ОДИН РАЗ', 1, '#дз_урок3'],
+  ['ДЗ к уроку 4', 20, 'НЕТ', 'ОДИН РАЗ', 1, '#дз_урок4'],
+  ['Фокус недели', 15, 'ДА', 'В НЕДЕЛЮ', 1, '#фокус'],
+  ['Итоги недели', 5, 'НЕТ', 'В НЕДЕЛЮ', 1, '#итог, #итоги'],
+  ['Участие в эфире', 10, 'ДА', 'В НЕДЕЛЮ', 1, ''],
+  ['Reels по технике', 5, 'ДА', 'БЕЗ ЛИМИТА', '', ''],
+  ['Итоговая практика месяца', 15, 'НЕТ', 'В МЕСЯЦ', 1, '#отчет_месяца, #отчёт_месяца, #отчетмесяца'],
+  ['Обмен: персональный разбор', -100, 'НЕТ', '', '', ''],
+  ['Обмен: персональная помощь Оли', -160, 'НЕТ', '', '', ''],
+  ['Другое (сумма вручную)', 0, 'НЕТ', '', '', ''],
 ];
 
 // Переделывает лист «Задания» под кнопки для участниц (старый лист сохраняется копией).
@@ -46,6 +48,7 @@ function upgradeTasks() {
   } else {
     sheet_(ss, SH.tasks, TASK_HEADER, TASK_ROWS);
   }
+  addSetting_(ss, 'Не начислять по хэштегам (Telegram ID через запятую, например Оля)', '');
   try { SpreadsheetApp.getUi().alert('Готово. Лист «Задания» обновлён. Новые уроки добавляй строкой «ДЗ к уроку 5» и т.д.'); } catch (e) {}
 }
 
@@ -56,7 +59,10 @@ function onOpen() {
     .createMenu('💎 Алмазы')
     .addItem('1. Создать листы', 'setup')
     .addItem('2. Ввести токен бота', 'setToken')
-    .addItem('3. Обновить лист «Задания» (кнопки для участниц)', 'upgradeTasks')
+    .addItem('3. Обновить лист «Задания»', 'upgradeTasks')
+    .addItem('4. Включить начисление по хэштегам в чате', 'enableChat')
+    .addItem('Выключить начисление по хэштегам', 'disableChat')
+    .addItem('Проверить чат сейчас', 'pollChat')
     .addToUi();
 }
 
@@ -223,7 +229,7 @@ function handle_(initData, action, taskName) {
 // ---------- Отметки участниц ----------
 
 function readTasks_(ss) {
-  return values_(ss, SH.tasks, 5)
+  return values_(ss, SH.tasks, 6)
     .filter(function (r) { return String(r[0]).trim() !== ''; })
     .map(function (r) {
       const per = String(r[3]).trim().toUpperCase();
@@ -233,6 +239,7 @@ function readTasks_(ss) {
         self: String(r[2]).trim().toUpperCase() === 'ДА',
         period: per.indexOf('БЕЗ') >= 0 ? 'none' : per.indexOf('НЕДЕЛ') >= 0 ? 'week' : per.indexOf('МЕСЯЦ') >= 0 ? 'month' : 'once',
         limit: Math.max(1, Number(r[4]) || 1),
+        tags: String(r[5] || '').toLowerCase().split(/[\s,;]+/).map(function (x) { return x.replace(/^#/, ''); }).filter(String),
       };
     });
 }
@@ -247,17 +254,24 @@ function periodKey_(d, period, tz) {
   return new Date(u - dow * 86400000).toISOString().slice(0, 10);
 }
 
+// Сколько раз задание уже засчитано участнице в текущем периоде (на дату when)
+function used_(t, name, logRows, tz, when) {
+  if (t.period === 'none') return 0;
+  const key = periodKey_(when, t.period, tz);
+  let used = 0;
+  logRows.forEach(function (r) {
+    if (String(r[1]).trim() !== name || String(r[2]).trim() !== t.name) return;
+    const d = r[0] instanceof Date ? r[0] : null;
+    if (t.period === 'once' || (d && periodKey_(d, t.period, tz) === key)) used++;
+  });
+  return used;
+}
+
 function taskStatus_(ss, name, logRows, tz) {
   const now = new Date();
   return readTasks_(ss).filter(function (t) { return t.self && t.amount > 0; }).map(function (t) {
     if (t.period === 'none') return { name: t.name, amount: t.amount, period: 'none', limit: 0, used: 0, available: true };
-    const key = periodKey_(now, t.period, tz);
-    let used = 0;
-    logRows.forEach(function (r) {
-      if (String(r[1]).trim() !== name || String(r[2]).trim() !== t.name) return;
-      const d = r[0] instanceof Date ? r[0] : null;
-      if (t.period === 'once' || (d && periodKey_(d, t.period, tz) === key)) used++;
-    });
+    const used = used_(t, name, logRows, tz, now);
     return { name: t.name, amount: t.amount, period: t.period, limit: t.limit, used: used, available: used < t.limit };
   });
 }
@@ -276,6 +290,110 @@ function mark_(ss, name, taskName, tz) {
     sh.getRange(row, 1, 1, 3).setValues([[new Date(), name, t.name]]);
     SpreadsheetApp.flush();
     return { ok: true, task: t.name, amount: t.amount };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ---------- Начисление по хэштегам в чате клуба ----------
+// Бот алмазов добавлен в чат клуба. Раз в 5 минут скрипт забирает новые сообщения,
+// находит хэштеги из листа «Задания» и сам записывает строки в «Начисления».
+
+function enableChat() {
+  const ui = SpreadsheetApp.getUi();
+  const token = PropertiesService.getScriptProperties().getProperty('BOT_TOKEN');
+  if (!token) { ui.alert('Сначала введи токен бота (меню 💎 Алмазы → 2).'); return; }
+  const me = tg_(token, 'getMe', {});
+  if (!me.ok) { ui.alert('Telegram не принял токен. Проверь его (меню 💎 Алмазы → 2).'); return; }
+  if (!me.result.can_read_all_group_messages) {
+    ui.alert('Бот пока не видит сообщения в чате.\n\nВ @BotFather: /setprivacy → выбери @' + me.result.username +
+      ' → Disable. Потом удали бота из чата клуба и добавь заново. И снова нажми этот пункт меню.');
+    return;
+  }
+  addSetting_(SpreadsheetApp.getActive(), 'Не начислять по хэштегам (Telegram ID через запятую, например Оля)', '');
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'pollChat') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('pollChat').timeBased().everyMinutes(5).create();
+  pollChat();
+  ui.alert('Включено. Бот проверяет чат каждые 5 минут и начисляет алмазы по хэштегам.');
+}
+
+function disableChat() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'pollChat') ScriptApp.deleteTrigger(t); });
+  try { SpreadsheetApp.getUi().alert('Начисление по хэштегам выключено.'); } catch (e) {}
+}
+
+function tg_(token, method, payload) {
+  const r = UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/' + method, {
+    method: 'post', contentType: 'application/json', payload: JSON.stringify(payload), muteHttpExceptions: true,
+  });
+  try { return JSON.parse(r.getContentText()); } catch (e) { return { ok: false }; }
+}
+
+// Находит задание по хэштегу. #дз_урокN без строки в «Задания» — добавляет строку «ДЗ к уроку N» по образцу.
+function taskByTag_(ss, tasks, tag) {
+  const direct = tasks.filter(function (t) { return t.tags.indexOf(tag) >= 0; })[0];
+  if (direct) return direct;
+  const m = tag.match(/^дз_?урок_?(\d+)$/);
+  if (!m) return null;
+  const name = 'ДЗ к уроку ' + Number(m[1]);
+  const byName = tasks.filter(function (t) { return t.name === name; })[0];
+  if (byName) return byName;
+  const sample = tasks.filter(function (t) { return /^ДЗ к уроку \d+$/.test(t.name); })[0];
+  const amount = sample ? sample.amount : 20;
+  ss.getSheetByName(SH.tasks).appendRow([name, amount, 'НЕТ', 'ОДИН РАЗ', 1, '#дз_урок' + Number(m[1])]);
+  const t = { name: name, amount: amount, self: false, period: 'once', limit: 1, tags: ['дз_урок' + Number(m[1])] };
+  tasks.push(t);
+  return t;
+}
+
+function pollChat() {
+  const props = PropertiesService.getScriptProperties();
+  const token = props.getProperty('BOT_TOKEN');
+  if (!token) return;
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return;
+  try {
+    const offset = Number(props.getProperty('TG_OFFSET') || 0);
+    const res = tg_(token, 'getUpdates', { offset: offset, timeout: 0, allowed_updates: ['message'] });
+    if (!res.ok || !res.result.length) return;
+    const ss = SpreadsheetApp.getActive();
+    const tz = ss.getSpreadsheetTimeZone();
+    const settings = readSettings_(ss);
+    const tasks = readTasks_(ss);
+    const sh = ss.getSheetByName(SH.log);
+    let logRows = values_(ss, SH.log, 6);
+    let next = offset;
+    res.result.forEach(function (u) {
+      next = Math.max(next, u.update_id + 1);
+      const msg = u.message;
+      if (!msg || !msg.from || msg.from.is_bot) return;
+      if (msg.chat.type !== 'group' && msg.chat.type !== 'supergroup') return;
+      const uid = String(msg.from.id);
+      if (settings.excluded.indexOf(uid) >= 0) return;
+      if (settings.test && settings.allowed.indexOf(uid) < 0) return;
+      const text = String(msg.text || msg.caption || '').toLowerCase();
+      const tags = (text.match(/#[0-9a-zа-яё_]+/g) || []).map(function (x) { return x.slice(1); });
+      if (!tags.length) return;
+      const when = new Date(msg.date * 1000);
+      let credited = false;
+      const seen = {};
+      tags.forEach(function (tag) {
+        const t = taskByTag_(ss, tasks, tag);
+        if (!t || t.amount <= 0 || seen[t.name]) return;
+        seen[t.name] = true;
+        const name = findOrAddMember_(ss, msg.from, true);
+        if (t.period !== 'none' && used_(t, name, logRows, tz, when) >= t.limit) return;
+        const row = logRows.length + 2;
+        sh.getRange(row, 1, 1, 3).setValues([[when, name, t.name]]);
+        logRows.push([when, name, t.name, t.amount, '', '']);
+        credited = true;
+      });
+      if (credited) {
+        tg_(token, 'setMessageReaction', { chat_id: msg.chat.id, message_id: msg.message_id, reaction: [{ type: 'emoji', emoji: '🔥' }] });
+      }
+    });
+    props.setProperty('TG_OFFSET', String(next));
+    SpreadsheetApp.flush();
   } finally {
     lock.releaseLock();
   }
@@ -307,6 +425,14 @@ function verify_(initData, token) {
   try { return JSON.parse(obj.user); } catch (e) { return null; }
 }
 
+function addSetting_(ss, label, value) {
+  const sh = ss.getSheetByName(SH.settings);
+  if (!sh) return;
+  const rows = values_(ss, SH.settings, 2);
+  if (rows.some(function (r) { return String(r[0]).indexOf(label.slice(0, 12)) === 0; })) return;
+  sh.getRange(rows.length + 2, 1, 1, 2).setValues([[label, value]]);
+}
+
 function readSettings_(ss) {
   const rows = values_(ss, SH.settings, 2);
   const get = function (prefix) {
@@ -317,11 +443,12 @@ function readSettings_(ss) {
     test: get('Тестовый режим').toUpperCase() !== 'НЕТ',
     allowed: get('Кто видит').split(/[\s,;]+/).filter(String),
     howto: get('Как обменять'),
+    excluded: get('Не начислять').split(/[\s,;]+/).filter(String),
   };
 }
 
 // Находит участницу по Telegram ID; новую добавляет в лист «Участницы». Возвращает имя из колонки «Имя».
-function findOrAddMember_(ss, user) {
+function findOrAddMember_(ss, user, haveLock) {
   const sh = ss.getSheetByName(SH.members);
   const id = String(user.id);
   const find = function () {
@@ -332,8 +459,8 @@ function findOrAddMember_(ss, user) {
   let f = find();
   if (f.name) return f.name;
 
-  const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+  const lock = haveLock ? null : LockService.getScriptLock();
+  if (lock) lock.waitLock(20000);
   try {
     f = find();
     if (f.name) return f.name;
@@ -344,7 +471,7 @@ function findOrAddMember_(ss, user) {
     sh.getRange(row, 1, 1, 4).setValues([[name, user.username ? '@' + user.username : '', id, new Date()]]);
     return name;
   } finally {
-    lock.releaseLock();
+    if (lock) lock.releaseLock();
   }
 }
 
