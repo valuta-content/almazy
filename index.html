@@ -127,7 +127,7 @@ ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-si
         haptic();
         if (x.link) {
           var go = function(){ openLink(x.link); };
-          if (tg.showPopup) { try { tg.showPopup({ title:'Готово! −' + x.price + ' 💎', message:'Сейчас откроется чат с Олей с готовым сообщением. Просто нажми «Отправить».', buttons:[{id:'go', type:'default', text:'Написать Оле'}] }, go); return; } catch(e){} }
+          if (tg.showPopup) { try { tg.showPopup({ title:'Готово! −' + x.price + ' 💎', message:'Обязательно отправь Оле сообщение об обмене, без него она не узнает о твоей заявке. Сейчас откроется чат с готовым текстом, просто нажми «Отправить».', buttons:[{id:'go', type:'default', text:'Написать Оле'}] }, go); return; } catch(e){} }
           go();
         } else {
           toast('Готово! −' + x.price + ' 💎. Напиши Оле, что обменяла алмазы.');
