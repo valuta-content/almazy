@@ -73,6 +73,7 @@ function onOpen() {
     .addItem('2. Ввести токен бота', 'setToken')
     .addItem('3. Обновить таблицу до новой версии', 'upgrade')
     .addItem('4. Включить начисление из чата', 'enableChat')
+    .addItem('5. Починить формулы (если алмазы стали 0)', 'fixFormulas')
     .addSeparator()
     .addItem('Проверить чат сейчас', 'pollChat')
     .addItem('Начислить бонус по листу «Бонус за ноябрь»', 'grantBonus')
@@ -135,8 +136,10 @@ function setupSheets_(ss) {
 // Формулы: сумма строки (с учётом отмены обмена) и баланс участницы
 function formulas_(ss) {
   const log = ss.getSheetByName(SH.log);
-  log.getRange('D2').setFormula(
-    "=ARRAYFORMULA(IF(C2:C=\"\",\"\",IF(G2:G=\"ОТМЕНА\",0,IF(E2:E<>\"\",E2:E,IFERROR(VLOOKUP(C2:C,'" + SH.tasks + "'!A:B,2,FALSE),0)))))");
+  // Формулы стоят в шапке (строка 1), чтобы удаление любых строк с данными их не ломало
+  log.getRange('D2:D').clearContent();
+  log.getRange('D1').setFormula(
+    "={\"" + LOG_HEADER[3] + "\";ARRAYFORMULA(IF(C2:C=\"\",\"\",IF(G2:G=\"ОТМЕНА\",0,IF(E2:E<>\"\",E2:E,IFERROR(VLOOKUP(C2:C,'" + SH.tasks + "'!A:B,2,FALSE),0)))))}");
   log.getRange('D1:D').setBackground('#eef3fb');
   // Списки в «Участница» и «За что» — подсказки, а не запрет (чтобы скрипт мог писать «Обмен: …»)
   log.getRange('B2:B').setDataValidation(SpreadsheetApp.newDataValidation()
@@ -145,8 +148,17 @@ function formulas_(ss) {
     .requireValueInRange(ss.getSheetByName(SH.tasks).getRange('A2:A'), true).setAllowInvalid(true).build());
   log.getRange('G2:G').setDataValidation(SpreadsheetApp.newDataValidation()
     .requireValueInList(['ЗАЯВКА', 'ОТМЕНА', 'ВЫПОЛНЕНО'], true).setAllowInvalid(true).build());
-  ss.getSheetByName(SH.members).getRange('E2').setFormula(
-    "=ARRAYFORMULA(IF(A2:A=\"\",\"\",SUMIF('" + SH.log + "'!B:B,A2:A,'" + SH.log + "'!D:D)))");
+  const mem = ss.getSheetByName(SH.members);
+  mem.getRange('E2:E').clearContent();
+  mem.getRange('E1').setFormula(
+    "={\"Баланс\";ARRAYFORMULA(IF(A2:A=\"\",\"\",SUMIF('" + SH.log + "'!B2:B,A2:A,'" + SH.log + "'!D2:D)))}");
+}
+
+function fixFormulas() {
+  const ss = SpreadsheetApp.getActive();
+  withEnLocale_(ss, function () { formulas_(ss); });
+  SpreadsheetApp.flush();
+  try { SpreadsheetApp.getUi().alert('Готово, формулы на месте. Теперь строки можно удалять, алмазы не обнулятся.'); } catch (e) {}
 }
 
 // Переход на новую версию: старые «Задания», «Награды», «Правила» сохраняются скрытыми копиями.
